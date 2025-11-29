@@ -1,0 +1,75 @@
+@startuml
+!theme vibrant
+autonumber
+
+actor "User A (Host)" as UserA
+participant "Client A" as ClientA
+participant "API Gateway" as Gateway
+participant "Meeting Service" as MeetingService
+participant "Signaling Service" as Signaling
+participant "Firestore" as DB
+participant "Client B" as ClientB
+actor "User B (Guest)" as UserB
+
+== Authentication ==
+UserA -> ClientA: Click Login
+ClientA -> "Firebase Auth": Authenticate (Google)
+"Firebase Auth" --> ClientA: ID Token
+
+== Create Meeting ==
+UserA -> ClientA: Click "New Meeting"
+ClientA -> Gateway: POST /meetings (Auth Header)
+Gateway -> Gateway: Validate Token
+Gateway -> MeetingService: Proxy Request
+MeetingService -> DB: Create Meeting Doc (status: created)
+DB --> MeetingService: Meeting ID
+MeetingService --> Gateway: 201 Created (Meeting ID)
+Gateway --> ClientA: Meeting Details
+
+== Join Meeting (Host) ==
+ClientA -> ClientA: Navigate to /meeting/{id}
+ClientA -> Signaling: Connect (Socket.io)
+ClientA -> Signaling: emit 'join-room' (roomId, userId)
+Signaling --> ClientA: Joined Room
+
+== Join Meeting (Guest) ==
+UserB -> ClientB: Login & Click "Join"
+ClientB -> Gateway: GET /meetings/{id}
+Gateway -> MeetingService: Proxy Request
+MeetingService -> DB: Get Meeting
+DB --> MeetingService: Meeting Data
+MeetingService --> Gateway: Meeting Details
+Gateway --> ClientB: Meeting Details
+
+ClientB -> Signaling: Connect (Socket.io)
+ClientB -> Signaling: emit 'join-room' (roomId, userId)
+Signaling -> ClientA: emit 'user-connected' (UserB)
+
+== WebRTC Signaling (P2P Setup) ==
+note over ClientA, ClientB: WebRTC Handshake
+
+ClientA -> ClientA: Create Offer
+ClientA -> Signaling: emit 'offer' (sdp, target=UserB)
+Signaling -> ClientB: emit 'offer' (sdp, sender=UserA)
+
+ClientB -> ClientB: Set Remote Desc (Offer)
+ClientB -> ClientB: Create Answer
+ClientB -> Signaling: emit 'answer' (sdp, target=UserA)
+Signaling -> ClientA: emit 'answer' (sdp, sender=UserB)
+
+ClientA -> ClientA: Set Remote Desc (Answer)
+
+par ICE Candidates
+    ClientA -> Signaling: emit 'ice-candidate'
+    Signaling -> ClientB: emit 'ice-candidate'
+    ClientB -> ClientB: Add Candidate
+else
+    ClientB -> Signaling: emit 'ice-candidate'
+    Signaling -> ClientA: emit 'ice-candidate'
+    ClientA -> ClientA: Add Candidate
+end
+
+== Media Streaming ==
+ClientA <-> ClientB: P2P Video/Audio Stream (Direct)
+
+@enduml

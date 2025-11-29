@@ -1,0 +1,62 @@
+@startuml
+!theme vibrant
+skinparam componentStyle uml2
+
+actor "User A" as UserA
+actor "User B" as UserB
+
+package "Frontend (Client)" {
+    component [React App A] as ClientA
+    component [React App B] as ClientB
+}
+
+package "Backend (Microservices)" {
+    component [API Gateway] as Gateway
+    component [Meeting Service] as MeetingService
+    component [Signaling Service] as SignalingService
+}
+
+database "Firebase" {
+    component [Firestore] as DB
+    component [Firebase Auth] as Auth
+}
+
+' Client A Interactions
+UserA --> ClientA : Uses
+ClientA --> Gateway : REST API (Meetings)
+ClientA <--> SignalingService : WebSocket (Signaling)
+ClientA --> Auth : Login / Get Token
+
+' Client B Interactions
+UserB --> ClientB : Uses
+ClientB --> Gateway : REST API (Meetings)
+ClientB <--> SignalingService : WebSocket (Signaling)
+ClientB --> Auth : Login / Get Token
+
+' Backend Interactions
+Gateway --> Auth : Verify Token
+Gateway --> MeetingService : Proxy Request
+MeetingService --> DB : CRUD (Meeting Data)
+
+' P2P
+ClientA <..> ClientB : WebRTC (Video/Audio P2P)
+
+note right of SignalingService
+  Handles:
+  - join-room
+  - offer
+  - answer
+  - ice-candidate
+end note
+
+note right of Gateway
+  Port: 8000
+  Auth Middleware
+end note
+
+note right of MeetingService
+  Port: 8001
+  Manages Meeting State
+end note
+
+@enduml
