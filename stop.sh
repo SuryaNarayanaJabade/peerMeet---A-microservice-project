@@ -1,0 +1,1 @@
+killall "npm run dev" "npm start" "MainThread"

@@ -49,6 +49,18 @@ The project is organized into two main directories:
     # Repeat for meeting-service and signaling-service
     ```
 
+or
+
+```bash
+# to run all the servers in local mode
+chmod +x run.sh
+./run.sh
+
+# to stop all the servers in local mode
+chmod +x stop.sh
+./stop.sh
+```
+
 ## 🔒 Configuration
 
 Ensure you have the necessary environment variables and configuration files set up:
