@@ -18,7 +18,7 @@ app.get('/health', (req, res) => {
 
 // Meeting Service Proxy
 app.use('/meetings', authMiddleware, createProxyMiddleware({
-    target: 'http://localhost:8001',
+    target: process.env.MEETING_SERVICE_URL || 'http://localhost:8001',
     changeOrigin: true,
     pathRewrite: {
         '^/meetings': '', // Remove /meetings prefix when forwarding

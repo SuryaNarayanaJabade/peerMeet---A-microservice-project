@@ -21,6 +21,10 @@ dist/
 service-account.json
 firebase-service-account.json
 google-credentials.json
+backend/api-gateway/.env
+backend/meeting-service/.env
+backend/signaling-service/.env
+client/src/.env
 
 # IDEs and Editors
 .vscode/
