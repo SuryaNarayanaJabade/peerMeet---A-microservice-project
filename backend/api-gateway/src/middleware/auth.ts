@@ -11,9 +11,23 @@ import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
     try {
-        const serviceAccount = require("../../../service-account.json");
+        // Prepare credential object
+        let credential;
+
+        // Check if GOOGLE_APPLICATION_CREDENTIALS env var is set (Standard for Cloud/K8s)
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            // In K8s/Docker, if we mount the JSON file and set the env var, 
+            // admin.credential.applicationDefault() or cert() with path works.
+            // Explicitly handling the path if provided in env to match our manual setup
+            credential = admin.credential.cert(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+        } else {
+            // Fallback for local development if env var not set
+            const serviceAccount = require("../../../service-account.json");
+            credential = admin.credential.cert(serviceAccount);
+        }
+
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
+            credential: credential,
             projectId: "online-meeting-3cb69" // Taken from user's client config
         });
     } catch (error) {

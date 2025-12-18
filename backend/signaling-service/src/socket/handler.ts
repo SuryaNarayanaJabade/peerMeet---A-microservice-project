@@ -5,13 +5,14 @@ export const setupSocketHandlers = (io: Server) => {
         console.log('User connected:', socket.id);
 
         socket.on('join-room', (roomId: string, userId: string) => {
-            console.log(`User ${userId} joined room ${roomId}`);
+            console.log(`[ROOM] User ${userId} joining room: ${roomId}`);
             socket.join(roomId);
             socket.join(userId); // Join a room with the user's ID for direct messaging
             socket.to(roomId).emit('user-connected', userId);
+            console.log(`[ROOM] Inferred ${userId} connected event sent to room: ${roomId}`);
 
             socket.on('disconnect', () => {
-                console.log(`User ${userId} disconnected`);
+                console.log(`[ROOM] User ${userId} disconnected from room: ${roomId}`);
                 socket.to(roomId).emit('user-disconnected', userId);
             });
         });

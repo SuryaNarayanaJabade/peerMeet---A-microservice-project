@@ -94,34 +94,52 @@ export const useWebRTC = (roomId: string) => {
                 // Setup socket listeners immediately
                 setupSocket();
 
+                // Detailed Socket connection logging
+                socket.on('connect', () => {
+                    console.log('SOCKET: Connected with ID:', socket.id);
+                });
+
+                socket.on('connect_error', (err) => {
+                    console.error('SOCKET: Connection error:', err.message);
+                });
+
+                socket.on('disconnect', (reason) => {
+                    console.log('SOCKET: Disconnected. Reason:', reason);
+                });
+
                 try {
+                    console.log("Getting local media stream...");
                     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                     if (mounted) {
-                        console.log("Local stream obtained");
+                        console.log("Local stream obtained successfully");
                         localStreamRef.current = stream;
                         setLocalStream(stream);
 
                         // Add tracks to existing peer connection if it exists
                         if (peerConnection.current) {
+                            console.log("Adding tracks to existing peer connection");
                             stream.getTracks().forEach(track => {
                                 peerConnection.current?.addTrack(track, stream);
                             });
                         }
                     } else {
-                        // Clean up if unmounted while waiting
+                        console.log("Hook unmounted during media acquisition, stopping tracks");
                         stream.getTracks().forEach(track => track.stop());
                         return;
                     }
                 } catch (mediaErr) {
-                    console.warn("Failed to get local media stream:", mediaErr);
+                    console.error("CRITICAL: Failed to get local media stream:", mediaErr);
+                    setError("Media access denied. Please check site permissions.");
                 }
 
                 if (!mounted) return;
 
-                console.log("Connecting to socket...");
+                console.log("Attempting to connect to signaling server at:", (socket as any).io.uri);
                 if (!socket.connected) {
                     socket.connect();
                 }
+
+                console.log("Emitting join-room for room:", roomId);
                 socket.emit('join-room', roomId, user?.uid);
 
             } catch (err: any) {
@@ -189,6 +207,7 @@ export const useWebRTC = (roomId: string) => {
         const pc = createPeerConnection(targetUserId);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        setError(null);
 
         console.log("Sending offer...");
         socket.emit('offer', {

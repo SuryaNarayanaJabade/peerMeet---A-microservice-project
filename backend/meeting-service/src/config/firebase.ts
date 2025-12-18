@@ -2,9 +2,17 @@ import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
     try {
-        const serviceAccount = require("../../../service-account.json");
+        let credential;
+
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            credential = admin.credential.cert(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+        } else {
+            const serviceAccount = require("../../../service-account.json");
+            credential = admin.credential.cert(serviceAccount);
+        }
+
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
+            credential: credential,
             projectId: "online-meeting-3cb69"
         });
     } catch (error) {

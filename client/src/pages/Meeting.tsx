@@ -6,7 +6,7 @@ import { PhoneOff } from 'lucide-react';
 export const Meeting = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { localStream, remoteStream, participants, error } = useWebRTC(id || '');
+    const { localStream, remoteStream, participants } = useWebRTC(id || '');
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);

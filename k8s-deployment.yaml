@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: firebase-sa-secret
+type: Opaque
+# Data will be created imperatively by the user using:
+# kubectl create secret generic firebase-sa-secret --from-file=service-account.json=./backend/service-account.json
+# We are just defining the usage here, or we can use stringData if checking in (NOT RECOMMENDED for secrets).
+# For this file, we assume the secret already exists or user creates it.
+---
+# Client Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      containers:
+      - name: client
+        image: us-central1-docker.pkg.dev/online-meeting-3cb69/peermeet-repo/client:latest # User needs to build this locally or pull from registry
+        imagePullPolicy: IfNotPresent # Important for local testing with Kind/Minikube
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: client
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30000 # Fixed port for easier access
+---
+# API Gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: us-central1-docker.pkg.dev/online-meeting-3cb69/peermeet-repo/api-gateway:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PORT
+          value: "8000"
+        - name: MEETING_SERVICE_URL
+          value: "http://meeting-service:8001"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/app/service-account.json"
+        volumeMounts:
+        - name: firebase-credentials
+          mountPath: "/app/service-account.json"
+          subPath: "service-account.json"
+          readOnly: true
+      volumes:
+      - name: firebase-credentials
+        secret:
+          secretName: firebase-sa-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: api-gateway
+  ports:
+  - port: 80
+    targetPort: 8000
+
+---
+# Meeting Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meeting-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meeting-service
+  template:
+    metadata:
+      labels:
+        app: meeting-service
+    spec:
+      containers:
+      - name: meeting-service
+        image: us-central1-docker.pkg.dev/online-meeting-3cb69/peermeet-repo/meeting-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8001
+        env:
+        - name: PORT
+          value: "8001"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/app/service-account.json"
+        volumeMounts:
+        - name: firebase-credentials
+          mountPath: "/app/service-account.json"
+          subPath: "service-account.json"
+          readOnly: true
+      volumes:
+      - name: firebase-credentials
+        secret:
+          secretName: firebase-sa-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meeting-service
+spec:
+  type: ClusterIP
+  selector:
+    app: meeting-service
+  ports:
+  - port: 8001
+    targetPort: 8001
+---
+# Signaling Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signaling-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: signaling-service
+  template:
+    metadata:
+      labels:
+        app: signaling-service
+    spec:
+      containers:
+      - name: signaling-service
+        image: us-central1-docker.pkg.dev/online-meeting-3cb69/peermeet-repo/signaling-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8002
+        env:
+        - name: PORT
+          value: "8002"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: signaling-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: signaling-service
+  ports:
+  - port: 80
+    targetPort: 8002
+    nodePort: 30002
