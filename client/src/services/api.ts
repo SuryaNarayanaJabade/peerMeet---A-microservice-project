@@ -2,7 +2,7 @@ import axios from 'axios';
 import { auth } from '../firebase';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000', // API Gateway
+    baseURL: import.meta.env.VITE_API_GATEWAY_URL || 'http://34.72.200.247:80', // API Gateway
 });
 
 // Add Auth Token to requests
